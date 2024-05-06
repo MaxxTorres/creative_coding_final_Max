@@ -1,18 +1,20 @@
 let scene;
 let add_sprite = true;
 
+let x_loc;
+let y_loc;
+
 let ironman_sprite;
 let c_america_sprite;
 let c_marvel_sprite;
 let cursor_sprite;
 
-let face_image;
-let face_video;
-let tile_size = 10;
+let tile_size = 20;
 let loc_arr = [];
 let tile_sprite_arr = [];
 let speed_arr = [];
 let start = false;
+let vol = 0.15;
 
 let wall1;
 let wall2;
@@ -20,13 +22,17 @@ let wall3;
 let wall4;
 
 let video;
+let handpose;
+let predictions = [];
+let hand_open;
 
 function preload(){
   ironman = loadImage('ironman.png');
+	ironman_sound = loadSound('avengers_sound.mp3')
 	c_america = loadImage('captain_america.png');
 	c_marvel = loadImage('captain_marvel.png');
 	bg1 = loadImage('background1.jpg');
-	bg2 = loadImage('background2.jpg');
+	bg2 = loadImage('city_bg.jpeg');
 	cursor = loadImage('cursor.png');
 	cursor1 = loadImage('gauntlet_open.png');
 	cursor2 = loadImage('gauntlet_snap.png');
@@ -35,11 +41,21 @@ function preload(){
 function setup() {
 	createCanvas(600,600);
 	noCursor();
-	pixelDensity(1);
+	//pixelDensity(1)	
+	
+	//Hand Tracking (ML5) Setup
 	video = createCapture(VIDEO);
-  video.size(100, 100);
-	face_video = createImage(40, 65);
-	video.hide();
+  video.size(width, height);
+
+  handpose = ml5.handpose(video, modelReady);
+
+  // This sets up an event that fills the global variable "predictions"
+  // with an array every time new hand poses are detected
+  handpose.on("predict", results => {
+    predictions = results;
+  });
+
+  video.hide();
 	
 	scene = 1;
 	
@@ -50,16 +66,28 @@ function setup() {
 	
 	createSpeedArr();
 	
-	//print("Press space to take a picture")
-	
+	print("Hold one hand around 2ft from webcam. Close fingers to select");
+	print("Otherwise, you may use the mouse");
 }
 
 function draw() {
+	//Check if hand is present, otherwise, use mouse
+	if (predictions.length > 0) {
+    	hand_open = check_pose();	//Check if hand is open or closed (T or F)
+			let prediction = predictions[0];
+			let palm = prediction.annotations.palmBase[0]
+			x_loc = palm[0];
+			y_loc = palm[1];
+  } else {
+			x_loc = mouseX;
+			y_loc = mouseY;
+	}
+	
 	if (scene == 1) {
-		background(bg1)
+		background(bg1);
 		scene1_setup();
-		cursor_sprite.x = mouseX;
-		cursor_sprite.y = mouseY;
+		cursor_sprite.x = x_loc;
+		cursor_sprite.y = y_loc;
 		c_america_sprite.scale = 0.8;
 		c_marvel_sprite.scale = 0.8;
 		ironman_sprite.scale = 0.8;
@@ -83,15 +111,16 @@ function draw() {
 	} //END OF SCENE 1 (SETUP SCENE)
 	else if (scene == 2) {
 		background(bg2);
+		ironman_sound.amp(vol);
 		
 		//Pixels will swarm and follow mouse during mouse press
 		if (mouseIsPressed) {
+			//vol = 0
 			for(let i=0; i<tile_sprite_arr.length; i++) {
-				tile_sprite_arr[i].direction = tile_sprite_arr[i].angleTo(mouseX+random(-50,50),mouseY+random(-50,50))
-				tile_sprite_arr[i].speed = speed_arr[i];
+				tile_sprite_arr[i].direction = tile_sprite_arr[i].angleTo(mouseX+random(-100,100),mouseY+random(-100,100))
 				tile_sprite_arr[i].draw();
 			}
-			image(cursor2,mouseX,mouseY,50,100);
+			image(cursor2,x_loc,y_loc,50,100);
 		}
 		//Pixels will have normal sprite physics 
 		//and will go to original positions when mouse not pressed
@@ -112,34 +141,19 @@ function draw() {
 							(tile_sprite_arr[i].y > loc_arr[i][1]-10 && tile_sprite_arr[i].y < loc_arr[i][1]+10)) {
 						tile_sprite_arr[i].x = loc_arr[i][0];
 						tile_sprite_arr[i].y = loc_arr[i][1];
+						//tile_sprite_arr[i].speed = 0;
+						if (vol <= 0.2) {
+							//vol += 0.00025;
+						}
 					}
 
 					tile_sprite_arr[i].draw();
 				}
 			}
-			image(cursor1,mouseX,mouseY,80,80);
-		} //End of mouse not pressed condition
+			image(cursor1,x_loc,y_loc,80,80);
+		}
 	}	//END OF SCENE 2 (MAIN SCENE)
 	
-	
-	//Display video of face
-	// video.loadPixels();
-	// face_video.loadPixels();
-	// for(let y = 30; y < 85; y++){
-	// for(let x = 30; x < 70; x++){
-	// let vid_pix = (x + (y * video.width)) * 4;
-	// 		let face_vid_pix = ((x-30) + ((y-30) * face_video.width)) * 4;
-			
-	// 		face_video.pixels[face_vid_pix] = video.pixels[vid_pix];
-	// 		face_video.pixels[face_vid_pix + 1] = video.pixels[vid_pix + 1];
-	// 		face_video.pixels[face_vid_pix + 2] = video.pixels[vid_pix + 2];
-	// 		face_video.pixels[face_vid_pix + 3] = 255;
-		
-			
-	// 	}
-	// }
-	// face_video.updatePixels();
-	// image(face_video,295,105);
 	
 }	//End of draw loop
 
@@ -154,6 +168,14 @@ function keyPressed() {
 		print("capturing image");
 		
 	}
+}
+
+function modelReady() {
+  console.log("Model ready!");
+}
+
+function check_pose() {
+	return true;
 }
 
 function scene1_setup() {
@@ -183,6 +205,8 @@ function scene2_setup(hero_img) {
 	c_marvel_sprite.remove();
 	cursor_sprite.remove();
 	createSpriteArr(hero_img);
+	ironman_sound.play();
+	ironman_sound.loop();
 	scene = 2;
 }
 
@@ -199,12 +223,15 @@ function createSpriteArr(hero_img) {
 			loc_arr.push([x+210,y+110]);
 		}
 	}
+	for(let i=0; i<tile_sprite_arr.length; i++) {
+				tile_sprite_arr[i].speed = speed_arr[i];
+	}
 }
 
 function createSpeedArr() {
 	//Create random speed array for sprites
-	for(let i=0; i<800; i++) {
-		let speed_ = random(0.5,8);
+	for(let i=0; i<200; i++) {
+		let speed_ = random(2,8);
 		speed_arr.push(speed_);
 	}
 }
