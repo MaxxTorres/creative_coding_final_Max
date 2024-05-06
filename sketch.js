@@ -14,15 +14,15 @@ let loc_arr = [];
 let tile_sprite_arr = [];
 let speed_arr = [];
 let start = false;
-let vol = 0.15;
 
 let wall1;
 let wall2;
 let wall3;
 let wall4;
 
+//Hand Tracking
 let video;
-let handpose;
+let hand_closed = false;
 let predictions = [];
 let hand_open;
 
@@ -41,41 +41,43 @@ function preload(){
 function setup() {
 	createCanvas(600,600);
 	noCursor();
-	//pixelDensity(1)	
-	
-	//Hand Tracking (ML5) Setup
-	video = createCapture(VIDEO);
-  video.size(width, height);
-
-  handpose = ml5.handpose(video, modelReady);
-
-  // This sets up an event that fills the global variable "predictions"
-  // with an array every time new hand poses are detected
-  handpose.on("predict", results => {
-    predictions = results;
-  });
-
-  video.hide();
+	pixelDensity(1)	
 	
 	scene = 1;
+	createSpeedArr();
 	
 	wall1 = new Sprite(0,300,5,595,'kinematic');
 	wall2 = new Sprite(300,0,600,5,'kinematic');
 	wall3 = new Sprite(300,600,595,5,'kinematic');
 	wall4 = new Sprite(600,300,5,600,'kinematic');
 	
-	createSpeedArr();
+	//Hand Tracking (ML5) Setup
+	//https://www.youtube.com/watch?v=A2yFBDBq9UY
+	video = createCapture(VIDEO);
+  	video.size(width, height);
+
+	handpose = ml5.handpose(video, modelReady);
+
+  	//Setting array of predictions
+	handpose.on("predict", results => {
+		predictions = results;
+	});
+
+  	video.hide();
 	
-	print("Hold one hand around 2ft from webcam. Close fingers to select");
+	//Instructions
+	print("INSTRUCTIONS:")
+	print("Hold palm around 1-2 FEET from webcam. CLOSE hand to interact");
 	print("Otherwise, you may use the mouse");
 }
 
 function draw() {
-	//Check if hand is present, otherwise, use mouse
+	//Check if hand is present and its attributes
+	//Otherwise, use mouse
 	if (predictions.length > 0) {
-    	hand_open = check_pose();	//Check if hand is open or closed (T or F)
+    	hand_closed = check_closed();	//Check if hand is closed
 			let prediction = predictions[0];
-			let palm = prediction.annotations.palmBase[0]
+			let palm = prediction.annotations.palmBase[0]	//Use palm to track cursor
 			x_loc = palm[0];
 			y_loc = palm[1];
   } else {
@@ -93,17 +95,17 @@ function draw() {
 		ironman_sprite.scale = 0.8;
 		if (cursor_sprite.overlapping(ironman_sprite)) {
 			ironman_sprite.scale = 0.9;
-			if (mouseIsPressed) {
+			if (mouseIsPressed || hand_closed) {
 				scene2_setup(ironman);
 			}
 		} else if (cursor_sprite.overlapping(c_america_sprite)) {
 			c_america_sprite.scale = 0.9;
-			if (mouseIsPressed) {
+			if (mouseIsPressed || hand_closed) {
 				scene2_setup(c_america);
 			}
 		} else if (cursor_sprite.overlapping(c_marvel_sprite)) {
 			c_marvel_sprite.scale = 0.9;
-			if (mouseIsPressed) {
+			if (mouseIsPressed || hand_closed) {
 				scene2_setup(c_marvel);
 			}
 		}
@@ -111,13 +113,16 @@ function draw() {
 	} //END OF SCENE 1 (SETUP SCENE)
 	else if (scene == 2) {
 		background(bg2);
-		ironman_sound.amp(vol);
+		ironman_sound.amp(0.15);
+		
+		if (hand_closed) {
+			start = true;
+		}
 		
 		//Pixels will swarm and follow mouse during mouse press
-		if (mouseIsPressed) {
-			//vol = 0
+		if (mouseIsPressed || hand_closed) {
 			for(let i=0; i<tile_sprite_arr.length; i++) {
-				tile_sprite_arr[i].direction = tile_sprite_arr[i].angleTo(mouseX+random(-100,100),mouseY+random(-100,100))
+				tile_sprite_arr[i].direction = tile_sprite_arr[i].angleTo(x_loc+random(-100,100),y_loc+random(-100,100))
 				tile_sprite_arr[i].draw();
 			}
 			image(cursor2,x_loc,y_loc,50,100);
@@ -142,9 +147,6 @@ function draw() {
 						tile_sprite_arr[i].x = loc_arr[i][0];
 						tile_sprite_arr[i].y = loc_arr[i][1];
 						//tile_sprite_arr[i].speed = 0;
-						if (vol <= 0.2) {
-							//vol += 0.00025;
-						}
 					}
 
 					tile_sprite_arr[i].draw();
@@ -171,15 +173,25 @@ function keyPressed() {
 }
 
 function modelReady() {
-  console.log("Model ready!");
+  console.log("(Hand Tracking Model Ready!)");
 }
 
-function check_pose() {
-	return true;
+function check_closed() {
+	let prediction = predictions[0];
+	let palm = prediction.annotations.palmBase[0];
+	let index_tip = prediction.annotations.indexFinger[3];
+	y_palm = palm[1];
+	y_index = index_tip[1];
+	let distance = y_palm - y_index;
+	if(distance <= 100) {
+		return true;	//hand is closed
+	} else {
+		return false;	//hand is open
+	}
 }
 
 function scene1_setup() {
-	if (add_sprite) {
+	if (add_sprite) {	//To prevent continuously adding sprites
 			ironman_sprite = new Sprite(100,300);
 			ironman_sprite.img = ironman;
 			ironman_sprite.collider = 'static';
