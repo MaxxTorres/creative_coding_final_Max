@@ -80,12 +80,12 @@ function setup() {
 	
 	//Hand Tracking (ML5) Setup---------
 	video = createCapture(VIDEO);
-  video.size(600, 600);	//Not sure how to change aspect ratio of webcam for more accurate tracking
-  handpose = ml5.handpose(video, modelReady); //Create handpose object
-  handpose.on("predict", results => {
-    predictions = results;	//Setting array of predictions
-  });
-  video.hide();
+  	video.size(600, 600);	//Not sure how to change aspect ratio of webcam for more accurate tracking
+  	handpose = ml5.handpose(video, modelReady); //Create handpose object
+  	handpose.on("predict", results => {
+    	predictions = results;	//Setting array of predictions
+	});
+	video.hide();
 	//-----------------------------------
 	
 	//Instructions
@@ -163,9 +163,8 @@ function draw() {
 		if(selected_hero == "ironman"){
 			ironman_logo.resize(300,0);
 			translate(width / 2, height / 2);
-  		rotate(angle);
+  			rotate(angle);
 			angle += 10;
-			print(angle);
 			image(ironman_logo,-150,-150);
 			if (angle > 300) {
 				pop();
@@ -174,9 +173,8 @@ function draw() {
 		} else if (selected_hero == "c_america") {
 			c_am_logo.resize(300,0);
 			translate(width / 2, height / 2);
-  		rotate(angle);
+  			rotate(angle);
 			angle += 10;
-			print(angle);
 			image(c_am_logo,-150,-150);
 			if (angle > 300) {
 				pop();
@@ -186,9 +184,8 @@ function draw() {
 		} else if (selected_hero == "c_marvel") {
 			c_ma_logo.resize(300,0);
 			translate(width / 2, height / 2);
-  		rotate(angle);
+  			rotate(angle);
 			angle += 10;
-			print(angle);
 			image(c_ma_logo,-150,-150);
 			if (angle > 300) {
 				pop();
